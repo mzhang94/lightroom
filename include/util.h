@@ -22,5 +22,7 @@ void verifyFunc(Func f, float val, int xRange, int yRange);
 void verifyFunc(Func output, Func expected, int xRange, int yRange);
 void verifyFunc(Func output, Image<float> expected);
 
+unsigned long millisecond_timer(void);
 float profile(Func myFunc, int w, int h);
 float profile(Func myFunc, int w, int h, int c);
+float profile(Func myFunc, int w, int h, int c, int i);

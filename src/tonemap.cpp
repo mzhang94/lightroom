@@ -12,6 +12,8 @@ Func nonzeroMin(Func image, int height, int width)
   Func min;
   min(x) = image(0,0);
   min(0) = select(image(r.x,r.y)>0 && image(r.x,r.y)<min(0), image(r.x,r.y), min(0));
+
+  min.compute_root();
   return min;
 }
 
@@ -39,11 +41,11 @@ Func toneMap(Func image, int width, int height, float initContrast, float target
   // writeImage(lumi, "output/lumi.png", width, height);
   Func logLumi = clampDomain(logImage(lumi, width, height), width-1, height-1);
   int sigmaDomain = ceil(0.02*(width > height ? width : height));
-  Func baseLumi;
+  Func baseLumi("baseLumi");
   if (useGrid)
   {
     Func minMaxLog = minMax(logLumi, width, height);
-    Func normalized;
+    Func normalized("normalized");
     normalized(x,y) = (logLumi(x,y) - minMaxLog(0))/(minMaxLog(1) - minMaxLog(0));
     Func filtered = bilateralGrid(normalized, sigmaRange/log(initContrast), sigmaDomain);
     baseLumi(x,y) = filtered(x,y) * (minMaxLog(1) - minMaxLog(0)) + minMaxLog(0);
@@ -58,13 +60,9 @@ Func toneMap(Func image, int width, int height, float initContrast, float target
 
   Func detailLumi("detailLumi");
   detailLumi(x,y) = logLumi(x,y) - baseLumi(x,y);
-  // writeImage(exp(detailLumi), "output/detailLumi.png", width, height);
   Func minMaxBase = minMax(baseLumi, width, height);
-  Func scaleFactor;
+  Func scaleFactor("scaleFactor");
   scaleFactor(x) = float(log(targetContrast))/(minMaxBase(1)-minMaxBase(0));
-  // apply_default_schedule(scaleFactor);
-  // Image<float> temp = scaleFactor.realize(1);
-  // std::cout << temp(0) << "\n";
   Func newLogLumi("newLogLumi");
   newLogLumi(x,y) = detailLumi(x,y) * detailAmp + (baseLumi(x,y)-minMaxBase(1)) * scaleFactor(0);
   Func outLumi("outLumi");
@@ -72,5 +70,17 @@ Func toneMap(Func image, int width, int height, float initContrast, float target
   // writeImage(outLumi, "output/outLumi.png", width, height);
   Func output("output");
   output(x,y,c) = image(x,y,c)/lumi(x,y)*outLumi(x,y);
+
+  //schedule
+  logLumi.compute_root().parallel(logLumi.args()[1]).vectorize(logLumi.args()[0], 16);
+  if (useGrid)
+  {
+    baseLumi.compute_root().parallel(y).vectorize(x, 16);
+    scaleFactor.compute_root().unroll(x);
+  }
+  else
+  {
+    baseLumi.compute_root();
+  }
   return changeGamma(output, 1, 1/2.2f);
 }
