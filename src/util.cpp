@@ -6,7 +6,7 @@ using namespace Halide::Tools;
 
 Func clampDomain(Func image, int xMax, int yMax)
 {
-  Func clamped;
+  Func clamped("clamped");
   Var x, y, c;
 
   if (image.dimensions()==2)
@@ -17,6 +17,7 @@ Func clampDomain(Func image, int xMax, int yMax)
   {
     clamped(x, y, c) = image(clamp(x, 0, xMax), clamp(y, 0, yMax), c);
   }
+
   return clamped;
 }
 
@@ -155,6 +156,24 @@ float profile(Func myFunc, int w, int h, int c) {
     unsigned long s = millisecond_timer();
     for (int i=0; i<N_TIMES; i++) {
         myFunc.realize(w,h,c);
+    }
+    float total_time = float(millisecond_timer()-s);
+
+    float mpixels = float(w*h)/1e6;
+    std::cout << " runtime " << total_time/N_TIMES << " ms "
+        << " throughput " << (mpixels*N_TIMES)/(total_time/1000) << " megapixels/sec" << std::endl;
+
+    return total_time/N_TIMES;
+}
+
+/**
+ * Print the runtime and throughout and return the runtime.
+ */
+float profile(Func myFunc, int w, int h, int c, int i) {
+    myFunc.compile_jit();
+    unsigned long s = millisecond_timer();
+    for (int i=0; i<N_TIMES; i++) {
+        myFunc.realize(w,h,c,i);
     }
     float total_time = float(millisecond_timer()-s);
 

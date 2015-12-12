@@ -127,12 +127,15 @@ Func boxBlur(Func image, int halfWindowSize, int schedule)
 
 Func convolveX(Func image, Func kernel, int halfSize)
 {
-  Var x, y, c;
+  Var x("x"), y, c;
 
   RDom r(-halfSize, 2*halfSize+1);
 
   Func output;
   output(x,y,c) = sum(image(x+r,y,c) * kernel(r));
+
+  output.vectorize(x, 16);
+
   return output;
 }
 
@@ -144,6 +147,13 @@ Func convolveY(Func image, Func kernel, int halfSize)
 
   Func output;
   output(x,y,c) = sum(image(x,y+r,c) * kernel(r));
+
+  Var yi, yo;
+  output.split(y, yo, yi, 64).vectorize(x, 16).parallel(yo);
+  // output.split(y, yo, yi, 64);
+
+  image.compute_at(output, yo);
+
   return output;
 }
 
@@ -178,9 +188,9 @@ Expr gaussian(Expr x, Expr y, Expr z, float sigma)
 
 Func gaussianKernel1d(float sigma, int halfSize)
 {
-  Var x;
+  Var x("x");
 
-  Func kernel;
+  Func kernel("kernel");
   kernel(x) = gaussian(x, sigma);
   if (halfSize > 0)
   {
@@ -218,6 +228,8 @@ Func gaussianFilter(Func image, float sigma, int halfWindowSize)
   Func kernel = gaussianKernel1d(sigma, halfWindowSize);
   Func blurx = convolveX(image, kernel, halfWindowSize);
   Func blury = convolveY(blurx, kernel, halfWindowSize);
+
+  kernel.compute_root();
 
   return blury;
 }
@@ -291,7 +303,7 @@ Func bilateralFilterYUV(Func image, float sigmaRange, float sigmaY, float sigmaU
 
 Func bilateralGrid(Func image, float sigmaRange, int sigmaDomain, float minVal, float maxVal)
 {
-  Var x, y, z, c;
+  Var x("x"), y("y"), z("z"), c("c");
   // Construct the bilateral grid
   RDom r(0, sigmaDomain, 0, sigmaDomain);
   Expr val = image(x * sigmaDomain + r.x, y * sigmaDomain + r.y);
@@ -337,5 +349,11 @@ Func bilateralGrid(Func image, float sigmaRange, int sigmaDomain, float minVal, 
   // Normalize
   Func bilateral_grid("bilateral_grid");
   bilateral_grid(x, y) = interpolated(x, y, 0)/interpolated(x, y, 1);
+
+  histogram.compute_at(blurz, y);
+  histogram.update().reorder(c, r.x, r.y, x, y).unroll(c);
+  blurz.compute_root().reorder(c, z, x, y).parallel(y).vectorize(x, 4).unroll(c);
+  blurx.compute_root().reorder(c, x, y, z).parallel(z).vectorize(x, 4).unroll(c);
+  blury.compute_root().reorder(c, x, y, z).parallel(z).vectorize(x, 4).unroll(c);
   return bilateral_grid;
 }

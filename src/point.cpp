@@ -4,7 +4,7 @@ using namespace Halide;
 Func clamp(Func image, float min, float max)
 {
   Var x,y,c;
-  Func output;
+  Func output("clamp");
 
   if (image.dimensions() == 3)
   {
@@ -23,6 +23,7 @@ Func changeGamma(Func image, float oldGamma, float newGamma)
   Func output;
 
   output(x,y,c) = pow(image(x,y,c), newGamma/oldGamma);
+
   return output;
 }
 
@@ -56,7 +57,7 @@ Func exposure(Func image, float factor, float gamma)
 Func color2gray(Func image, float wr, float wg, float wb)
 {
   Var x, y, c;
-  Func output;
+  Func output("lumi");
 
   output(x,y) = image(x,y,0) * wr + image(x,y,1) * wg + image(x,y,2) * wb;
   return output;
@@ -187,7 +188,7 @@ Func max(Func image, int width, int height, bool channelwise)
 Func minMax(Func image, int width, int height, bool channelwise)
 {
   Var c;
-  Func s;
+  Func s("minmax");
   Expr pixel;
   if (image.dimensions() == 3)
   {
@@ -210,6 +211,9 @@ Func minMax(Func image, int width, int height, bool channelwise)
     pixel = image(r.x, r.y);
   }
   s(c) = select((pixel > s(c)) ^ (c == 0), pixel, s(c));
+
+  //schedule
+  s.compute_root().unroll(c);
   return s;
 }
 

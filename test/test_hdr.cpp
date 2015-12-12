@@ -88,7 +88,7 @@ void testToneMapping_(std::string name, int numOfImages)
 {
   int width, height;
   Func images = loadImages(name, numOfImages, width, height);
-  Func hdr = mkhdr(images, 0.002, 0.99, width, height, numOfImages);
+  Func hdr = mkhdr(images, 0.002f, 0.99f, width, height, numOfImages);
 
   writeImage(hdr, "output/hdr/hdr.png", width, height);
 
@@ -112,8 +112,8 @@ void testToneMapping()
 
 int main(int argc, char ** argv)
 {
-  // testComputeWeight();
-  // testComputeFactors();
-  // testMakeHDR();
+  testComputeWeight();
+  testComputeFactors();
+  testMakeHDR();
   testToneMapping();
 }
