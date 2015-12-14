@@ -3,6 +3,7 @@
 #include "stencil.h"
 #include "util.h"
 #include "schedule.h"
+#include "global.h"
 
 using namespace Halide;
 Func nonzeroMin(Func image, int height, int width)

@@ -1,5 +1,6 @@
 #include "apps.h"
 #include "util.h"
+#include "global.h"
 #include "point.h"
 #include "schedule.h"
 

@@ -1,17 +1,21 @@
 #include "Halide.h"
 using namespace Halide;
 
-Func sum(Func image, int width, int height, bool channelwise=false);
-Func min(Func image, int width, int height, bool channelwise=false);
-Func max(Func image, int width, int height, bool channelwise=false);
-Func minMax(Func image, int width, int height, bool channelwise=false);
-Func substract(Func image1, Func image2);
-Func add(Func image1, Func image2);
-Func multiply(Func image1, Func image2);
-Func divide(Func image1, Func image2);
-Func add(Func image, Expr a);
-Func multiply(Func image, Expr a);
+
+Func operator-(Func image1, Func image2);
+Func operator+(Func image1, Func image2);
+Func operator*(Func image1, Func image2);
+Func operator/(Func image1, Func image2);
+Func operator+(Func image, Expr a);
+Func operator-(Func image, Expr a);
+Func operator*(Func image, Expr a);
+Func operator/(Func image, Expr a);
+Func operator+(Expr a, Func image);
+Func operator-(Expr a, Func image);
+Func operator*(Expr a, Func image);
+Func operator/(Expr a, Func image);
 // Func median(Func image, int width, int height);
+Func abs(Func image);
 Func changeGamma(Func image, float oldGamma, float newGamma);
 Func exposure(Func image, float factor, float gamma=2.2);
 Func brightness(Func image, float factor);

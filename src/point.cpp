@@ -40,7 +40,14 @@ Func contrast(Func image, float factor, float midpoint)
   Var x,y,c;
   Func output;
 
-  output(x,y,c) = (image(x,y,c) - midpoint) * factor + midpoint;
+  if (image.dimensions() == 3)
+  {
+    output(x,y,c) = (image(x,y,c) - midpoint) * factor + midpoint;
+  }
+  else
+  {
+    output(x,y) = (image(x,y) - midpoint) * factor + midpoint;
+  }
   return output;
 }
 
@@ -100,118 +107,6 @@ Func saturate(Func image, float factor)
   return yuv2rgb(yuv1);
 }
 
-Func sum(Func image, int width, int height, bool channelwise)
-{
-  Var c;
-  Func s;
-  s(c) = 0.0f;
-  if (image.dimensions() == 3)
-  {
-    if (channelwise)
-    {
-      RDom r(0, width, 0, height);
-      s(c) += image(r.x,r.y,c);
-    }
-    else
-    {
-      RDom r(0, width, 0, height, 0, 3);
-      s(0) += image(r.x,r.y,r.z);
-    }
-  }
-  else
-  {
-    RDom r(0, width, 0, height);
-    assert(image.dimensions()==2);
-    s(0) += image(r.x,r.y);
-  }
-  return s;
-}
-
-Func min(Func image, int width, int height, bool channelwise)
-{
-  Var c;
-  Func s;
-  if (image.dimensions() == 3)
-  {
-    if (channelwise)
-    {
-      s(c) = image(0,0,c);
-      RDom r(0, width, 0, height);
-      s(c) = select(image(r.x,r.y,c) < s(c), image(r.x,r.y,c), s(c));
-    }
-    else
-    {
-      s(c) = image(0,0,0);
-      RDom r(0, width, 0, height, 0, 3);
-      s(0) = select(image(r.x,r.y,r.z) < s(0), image(r.x,r.y,r.z), s(0));
-    }
-  }
-  else
-  {
-    s(c) = image(0,0);
-    RDom r(0, width, 0, height);
-    s(0) = select(image(r.x,r.y) < s(0), image(r.x,r.y), s(0));
-  }
-  return s;
-}
-
-Func max(Func image, int width, int height, bool channelwise)
-{
-  Var c;
-  Func s;
-  if (image.dimensions() == 3)
-  {
-    if (channelwise)
-    {
-      s(c) = image(0,0,c);
-      RDom r(0, width, 0, height);
-      s(c) = select(image(r.x,r.y,c) > s(c), image(r.x,r.y,c), s(c));
-    }
-    else
-    {
-      s(c) = image(0,0,0);
-      RDom r(0, width, 0, height, 0, 3);
-      s(0) = select(image(r.x,r.y,r.z) > s(0), image(r.x,r.y,r.z), s(0));
-    }
-  }
-  else
-  {
-    s(c) = image(0,0);
-    RDom r(0, width, 0, height);
-    s(0) = select(image(r.x,r.y) > s(0), image(r.x,r.y), s(0));
-  }
-  return s;
-}
-
-//output(0)=min, output(1) = max
-Func minMax(Func image, int width, int height, bool channelwise)
-{
-  Var c;
-  Func s;
-  Expr pixel;
-  if (image.dimensions() == 3)
-  {
-    s(c) = image(0,0,0);
-    if (channelwise)
-    {
-      RDom r(0, width, 0, height);
-      pixel = image(r.x,r.y,c);
-    }
-    else
-    {
-      RDom r(0, width, 0, height, 0, 3);
-      pixel = image(r.x, r.y, r.z);
-    }
-  }
-  else
-  {
-    s(c) = image(0,0);
-    RDom r(0, width, 0, height);
-    pixel = image(r.x, r.y);
-  }
-  s(c) = select((pixel > s(c)) ^ (c == 0), pixel, s(c));
-  return s;
-}
 
 std::vector<Func> lumiChromi(Func image, float wr, float wg, float wb)
 {
@@ -225,22 +120,7 @@ std::vector<Func> lumiChromi(Func image, float wr, float wg, float wb)
   return output;
 }
 
-Func substract(Func image1, Func image2)
-{
-  Func output;
-  Var x,y,c;
-  if (image1.dimensions()==2)
-  {
-    output(x,y) = image1(x,y) - image2(x,y);
-  }
-  else
-  {
-    output(x,y,c) = image1(x,y,c) - image2(x,y,c);
-  }
-  return output;
-}
-
-Func add(Func image1, Func image2)
+Func operator+(Func image1, Func image2)
 {
   Func output;
   Var x,y,c;
@@ -255,7 +135,22 @@ Func add(Func image1, Func image2)
   return output;
 }
 
-Func multiply(Func image1, Func image2)
+Func operator-(Func image1, Func image2)
+{
+  Func output;
+  Var x,y,c;
+  if (image1.dimensions()==2)
+  {
+    output(x,y) = image1(x,y) - image2(x,y);
+  }
+  else
+  {
+    output(x,y,c) = image1(x,y,c) - image2(x,y,c);
+  }
+  return output;
+}
+
+Func operator*(Func image1, Func image2)
 {
   Func output;
   Var x,y,c;
@@ -270,7 +165,7 @@ Func multiply(Func image1, Func image2)
   return output;
 }
 
-Func divide(Func image1, Func image2)
+Func operator/(Func image1, Func image2)
 {
   Func output;
   Var x,y,c;
@@ -278,14 +173,18 @@ Func divide(Func image1, Func image2)
   {
     output(x,y) = image1(x,y) / image2(x,y);
   }
-  else
+  else if (image1.dimensions()==3)
   {
     output(x,y,c) = image1(x,y,c) / image2(x,y,c);
+  }
+  else
+  {
+    output(x) = image1(x) / image2(x);
   }
   return output;
 }
 
-Func add(Func image, Expr a)
+Func operator+(Func image, Expr a)
 {
   Func output;
   Var x,y,c;
@@ -300,7 +199,22 @@ Func add(Func image, Expr a)
   return output;
 }
 
-Func multiply(Func image, Expr a)
+Func operator-(Func image, Expr a)
+{
+  Func output;
+  Var x,y,c;
+  if (image.dimensions()==2)
+  {
+    output(x,y) = image(x,y) - a;
+  }
+  else
+  {
+    output(x,y,c) = image(x,y,c) - a;
+  }
+  return output;
+}
+
+Func operator*(Func image, Expr a)
 {
   Func output;
   Var x,y,c;
@@ -313,5 +227,74 @@ Func multiply(Func image, Expr a)
     output(x,y,c) = image(x,y,c) * a;
   }
   return output;
+}
 
+Func operator/(Func image, Expr a)
+{
+  Func output;
+  Var x,y,c;
+  if (image.dimensions()==2)
+  {
+    output(x,y) = image(x,y) / a;
+  }
+  else
+  {
+    output(x,y,c) = image(x,y,c) / a;
+  }
+  return output;
+}
+
+Func operator+(Expr a, Func image)
+{
+  return image+a;
+}
+
+Func operator-(Expr a, Func image)
+{
+  Func output;
+  Var x,y,c;
+  if (image.dimensions()==2)
+  {
+    output(x,y) = a-image(x,y);
+  }
+  else
+  {
+    output(x,y,c) = a-image(x,y,c);
+  }
+  return output;
+}
+
+Func operator*(Expr a, Func image)
+{
+  return image*a;
+}
+
+Func operator/(Expr a, Func image)
+{
+  Func output;
+  Var x,y,c;
+  if (image.dimensions()==2)
+  {
+    output(x,y) = a/image(x,y);
+  }
+  else
+  {
+    output(x,y,c) = a/image(x,y,c);
+  }
+  return output;
+}
+
+Func abs(Func image)
+{
+  Func output;
+  Var x,y,c;
+  if (image.dimensions()==2)
+  {
+    output(x,y) = abs(image(x,y));
+  }
+  else
+  {
+    output(x,y,c) = abs(image(x,y,c));
+  }
+  return output;
 }

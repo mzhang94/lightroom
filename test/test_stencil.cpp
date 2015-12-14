@@ -67,9 +67,9 @@ void TestBoxBlur()
   int width = 1000;
   int height = 1000;
   image(x,y,c) = 1.0f;
-  Func blurred = boxBlur(image, 1, 0);
-  blurred = boxBlur(image, 1, 1);
-  blurred = boxBlur(image, 1, 2);
+  Func blurred = boxBlur(image, 1);
+
+  verifyFunc(blurred, 1, width, height);
 }
 
 void TestConvolve()

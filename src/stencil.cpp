@@ -66,61 +66,99 @@ Func gradient(Func image, GRADIENT_KERNEL kernel)
 {
   Var x,y,c;
 
-  Func gradient;
-  switch(kernel){
-    case SOBEL:
-    {
-      gradient(x,y,c) =
+  Func gradient("gradient");
+  if (image.dimensions() == 3)
+  {
+    switch(kernel){
+      case SOBEL:
       {
-        -image(x-1,y-1,c) + image(x+1,y-1,c) - 2.0f*image(x-1,y,c) + 2.0f*image(x+1,y,c) - image(x-1,y+1,c) + image(x+1,y+1,c),
-        -image(x-1,y-1,c) + image(x-1,y+1,c) - 2.0f*image(x,y-1,c) + 2.0f*image(x,y+1,c) - image(x+1,y-1,c) + image(x+1,y+1,c)
-      };
-      break;
-    }
-    case PREWITT:
-    {
-      gradient(x,y,c) =
+        gradient(x,y,c) =
+        {
+          -image(x-1,y-1,c) + image(x+1,y-1,c) - 2.0f*image(x-1,y,c) + 2.0f*image(x+1,y,c) - image(x-1,y+1,c) + image(x+1,y+1,c),
+          -image(x-1,y-1,c) + image(x-1,y+1,c) - 2.0f*image(x,y-1,c) + 2.0f*image(x,y+1,c) - image(x+1,y-1,c) + image(x+1,y+1,c)
+        };
+        break;
+      }
+      case PREWITT:
       {
-        -image(x-1,y-1,c) + image(x+1,y-1,c) - image(x-1,y,c) + image(x+1,y,c) - image(x-1,y+1,c) + image(x+1,y+1,c),
-        -image(x-1,y-1,c) + image(x-1,y+1,c) - image(x,y-1,c) + image(x,y+1,c) - image(x+1,y-1,c) + image(x+1,y+1,c)
-      };
-      break;
+        gradient(x,y,c) =
+        {
+          -image(x-1,y-1,c) + image(x+1,y-1,c) - image(x-1,y,c) + image(x+1,y,c) - image(x-1,y+1,c) + image(x+1,y+1,c),
+          -image(x-1,y-1,c) + image(x-1,y+1,c) - image(x,y-1,c) + image(x,y+1,c) - image(x+1,y-1,c) + image(x+1,y+1,c)
+        };
+        break;
+      }
+      default:
+      {
+        assert(false);
+      }
     }
-    default:
-    {
-      assert(false);
+  }
+  else
+  {
+    switch(kernel){
+      case SOBEL:
+      {
+        gradient(x,y) =
+        {
+          -image(x-1,y-1) + image(x+1,y-1) - 2.0f*image(x-1,y) + 2.0f*image(x+1,y) - image(x-1,y+1) + image(x+1,y+1),
+          -image(x-1,y-1) + image(x-1,y+1) - 2.0f*image(x,y-1) + 2.0f*image(x,y+1) - image(x+1,y-1) + image(x+1,y+1)
+        };
+        break;
+      }
+      case PREWITT:
+      {
+        gradient(x,y) =
+        {
+          -image(x-1,y-1) + image(x+1,y-1) - image(x-1,y) + image(x+1,y) - image(x-1,y+1) + image(x+1,y+1),
+          -image(x-1,y-1) + image(x-1,y+1) - image(x,y-1) + image(x,y+1) - image(x+1,y-1) + image(x+1,y+1)
+        };
+        break;
+      }
+      default:
+      {
+        assert(false);
+      }
     }
   }
   return gradient;
 }
 
-Func boxBlur(Func image, int halfWindowSize, int schedule)
+Func boxBlur(Func image, int halfWindowSize)
 {
   Var x,y,c;
 
   RDom r(-halfWindowSize, 2*halfWindowSize+1);
   Func blurx, blury;
-  blurx(x,y,c) = sum(image(x+r,y,c))/(2*halfWindowSize+1);
-  blury(x,y,c) = sum(blurx(x,y+r,c))/(2*halfWindowSize+1);
+  if (image.dimensions() == 3)
+  {
+    blurx(x,y,c) = sum(image(x+r,y,c))/(2*halfWindowSize+1);
+    blury(x,y,c) = sum(blurx(x,y+r,c))/(2*halfWindowSize+1);
+  }
+  else
+  {
+    blurx(x,y) = sum(image(x+r,y))/(2*halfWindowSize+1);
+    blury(x,y) = sum(blurx(x,y+r))/(2*halfWindowSize+1);
+  }
 
   // How to schedule it
-  Var xo, yo, xi, yi;
-  switch (schedule)
-  {
-    case 1:
-      blury.split(y, y, yi, 8).parallel(y).vectorize(x, 8);
-      blurx.store_at(blury, y).compute_at(blury, yi).vectorize(x, 8);
-      break;
-    case 2:
-      blury.tile(x, y, xo, yo, xi, yi, 256, 32);
-      blury.parallel(yo);
-      blury.vectorize(xi, 8);
-      blurx.compute_at(blury, xo);
-      blurx.vectorize(x, 8);
-      break;
-    default:
-      apply_default_schedule(blury);
-  }
+  // Var xo, yo, xi, yi;
+  // switch (schedule)
+  // {
+  //   case 1:
+  //     blury.split(y, y, yi, 8).parallel(y).vectorize(x, 8);
+  //     blurx.store_at(blury, y).compute_at(blury, yi).vectorize(x, 8);
+  //     break;
+  //   case 2:
+  //     blury.tile(x, y, xo, yo, xi, yi, 256, 32);
+  //     blury.parallel(yo);
+  //     blury.vectorize(xi, 8);
+  //     blurx.compute_at(blury, xo);
+  //     blurx.vectorize(x, 8);
+  //     break;
+  //   default:
+  //     apply_default_schedule(blury);
+  // }
 
   return blury;
 }
@@ -132,7 +170,14 @@ Func convolveX(Func image, Func kernel, int halfSize)
   RDom r(-halfSize, 2*halfSize+1);
 
   Func output;
-  output(x,y,c) = sum(image(x+r,y,c) * kernel(r));
+  if (image.dimensions() == 3)
+  {
+    output(x,y,c) = sum(image(x+r,y,c) * kernel(r));
+  }
+  else
+  {
+    output(x,y) = sum(image(x+r,y) * kernel(r));
+  }
   return output;
 }
 
@@ -143,7 +188,14 @@ Func convolveY(Func image, Func kernel, int halfSize)
   RDom r(-halfSize, 2*halfSize+1);
 
   Func output;
-  output(x,y,c) = sum(image(x,y+r,c) * kernel(r));
+  if (image.dimensions() == 3)
+  {
+    output(x,y,c) = sum(image(x,y+r,c) * kernel(r));
+  }
+  else
+  {
+    output(x,y) = sum(image(x,y+r) * kernel(r));
+  }
   return output;
 }
 
@@ -226,7 +278,14 @@ Func laplacianFilter(Func image)
 {
   Var x, y, c;
   Func output;
-  output(x,y,c) = 4*image(x,y,c) - image(x-1,y,c) - image(x+1,y,c) - image(x,y-1,c) - image(x,y+1,c);
+  if (image.dimensions() == 3)
+  {
+    output(x,y,c) = 4*image(x,y,c) - image(x-1,y,c) - image(x+1,y,c) - image(x,y-1,c) - image(x,y+1,c);
+  }
+  else
+  {
+    output(x,y) = 4*image(x,y) - image(x-1,y) - image(x+1,y) - image(x,y-1) - image(x,y+1);
+  }
   return output;
 }
 
@@ -291,15 +350,21 @@ Func bilateralFilterYUV(Func image, float sigmaRange, float sigmaY, float sigmaU
 
 Func bilateralGrid(Func image, float sigmaRange, int sigmaDomain, float minVal, float maxVal)
 {
+  return crossBilateral(image, image, sigmaRange, sigmaDomain, minVal, maxVal);
+}
+
+Func crossBilateral(Func gridIm, Func filterIm, float sigmaRange, int sigmaDomain, float minVal, float maxVal)
+{
   Var x, y, z, c;
   // Construct the bilateral grid
   RDom r(0, sigmaDomain, 0, sigmaDomain);
-  Expr val = image(x * sigmaDomain + r.x, y * sigmaDomain + r.y);
-  val = clamp(val, minVal, maxVal);
-  Expr zi = cast<int>(floor(val * (1.0f/sigmaRange)));
+  Expr gridVal = gridIm(x * sigmaDomain + r.x, y * sigmaDomain + r.y);
+  Expr filterVal = filterIm(x * sigmaDomain + r.x, y * sigmaDomain + r.y);
+  gridVal = clamp(gridVal, minVal, maxVal);
+  Expr zi = cast<int>(floor(gridVal * (1.0f/sigmaRange)));
   Func histogram("histogram");
   histogram(x, y, z, c) = 0.0f;
-  histogram(x, y, zi, c) += select(c == 0, val, 1.0f);
+  histogram(x, y, zi, c) += select(c == 0, filterVal, 1.0f);
 
   // Blur the grid using a five-tap filter
   Func blurx("blurx"), blury("blury"), blurz("blurz");
@@ -320,7 +385,7 @@ Func bilateralGrid(Func image, float sigmaRange, int sigmaDomain, float minVal, 
                        blurx(x, y+2, z, c));
 
   // Take trilinear samples to compute the output
-  Expr zv = clamp(image(x,y), minVal, maxVal) * (1.0f/sigmaRange);
+  Expr zv = clamp(gridIm(x,y), minVal, maxVal) * (1.0f/sigmaRange);
   zi = cast<int>(floor(zv));
   Expr zf = zv - zi;
   Expr xf = cast<float>(x % sigmaDomain) / sigmaDomain;

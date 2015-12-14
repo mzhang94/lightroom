@@ -1,6 +1,7 @@
 #include "Halide.h"
 #include "point.h"
 #include "util.h"
+#include "global.h"
 using namespace Halide;
 using namespace Halide::Tools;
 

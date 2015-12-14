@@ -2,12 +2,14 @@ set(SRC
   image.cpp
   util.cpp
   point.cpp
+  global.cpp
   stencil.cpp
   domain.cpp
   schedule.cpp
   demosaic.cpp
   mkhdr.cpp
   tonemap.cpp
+  stylechange.cpp
   )
 
 add_library(Lightroom ${SRC})
