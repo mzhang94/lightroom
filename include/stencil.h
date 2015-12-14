@@ -18,6 +18,7 @@ Func convolveX(Func image, Func kernel, int halfSize);
 Func convolveY(Func image, Func kernel, int halfSize);
 Func convolve2d(Func image, Func kernel, int halfWidth, int halfHeight);
 Func boxBlur(Func image, int halfWindowSize);
+Func boxBlur(Func image, int halfWindowSize, Func & scheduleFunc);
 Expr gaussian(Expr x, Expr y, float sigma);
 Func gaussianKernel1d(float sigma, int halfSize = 0);
 Func gaussianKernel2d(float sigma, int halfSize = 0);

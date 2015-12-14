@@ -7,3 +7,4 @@ using namespace Halide;
  */
 
 void apply_default_schedule(Func F);
+void schedule_compute_root(Func f);

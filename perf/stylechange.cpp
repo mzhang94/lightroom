@@ -25,8 +25,11 @@ int main(int argc, char ** argv)
   Func output = styleChange(model, input, model_image.width(), model_image.height(),
                             input_image.width(), input_image.height(), inputSigmaRange, inputSigmaDomain,
                             modelSigmaRange, modelSigmaDomain, "output");
-  apply_default_schedule(output);
+  schedule_compute_root(model);
+  schedule_compute_root(input);
+  schedule_compute_root(output);
   Target t = get_jit_target_from_environment().with_feature(Target::Profile);
+  output.compile_jit();
   Image<float> output_buf = clamp(output,0,1).realize(input_image.width(), input_image.height(), t);
   save_image(output_buf, "output.png");
 }

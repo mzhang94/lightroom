@@ -12,3 +12,11 @@ void apply_default_schedule(Func F) {
     }
     std::cout << std::endl;
 }
+
+void schedule_compute_root(Func f)
+{
+  Var yi, yo;
+  // f.compute_root().split(f.args()[1], yo, yi, 32).parallel(yo).vectorize(f.args()[0], 8);
+  // f.compute_root().split(f.args()[1], yo, yi, 64).parallel(yo).vectorize(f.args()[0], 8);
+  f.compute_root().parallel(f.args()[1]).vectorize(f.args()[0], 8);
+}

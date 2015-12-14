@@ -40,6 +40,9 @@ void getSigma(Func input, int width, int height, float& sigmaRange, int& sigmaDo
   printf("sigmaRange %f sigmaDomain %d\n", sigmaRange, sigmaDomain);
 }
 
+/* Schedule */
+// input: `input` shoud compute_root(), `model` is traversed once
+// output: `output` traverse `input`
 Func histMatch(Func model, Func input, int modelW, int modelH, int inputW, int inputH, std::string name, float minVal, float maxVal, int nbins)
 {
   Var x("x"), y("y");
@@ -75,17 +78,35 @@ Func histMatch(Func model, Func input, int modelW, int modelH, int inputW, int i
 
   Func output(name);
   output(x,y) = match(findBin(input(x,y), minVal, maxVal, nbins))/(nbins-1.0f) * (maxVal-minVal) + minVal;
+
+  /**** Schedule *****/
+  //model_hist.compute_root() inside hist
+  //input_hist.compute_root() inside hist
+  //model_equalize.compute_root() inside cumulate
+  //input_equalize.compute_root() inside cumulate
+  model_equalize.compute_inline();
+  input_equalize.compute_inline();
+  model_inv.compute_root().vectorize(x,16);
+  model_inv.update(0);
+  match.compute_inline();
   return output;
 }
 
+// input: input.compute_root()
+// output: stencil
 Func textureness(Func input, float sigmaRange, int sigmaDomain)
 {
   Var x("x"), y("y");
-  Func lowpass = boxBlur(input, sigmaDomain);
   Func highpassMag("highpassMag");
+  Func lowpass = boxBlur(input, sigmaDomain);
   highpassMag(x,y) = abs(input(x,y) - lowpass(x,y));
 
-  return crossBilateral(input, highpassMag, sigmaRange, 8*sigmaDomain);
+  Func output = crossBilateral(input, highpassMag, sigmaRange, 8*sigmaDomain);
+
+  /**************** Schedule ***************/
+  lowpass.compute_root(); // TODO schedule blurx, blury at highpassMag
+  // highpassMag.compute_root(); // TODO schedule highpassMag inside crossBilateral
+  return output;
 }
 
 Func poisson(Func input, Func guidanceField, int width, int height, int niter)
@@ -131,6 +152,7 @@ Func getCorrectedDetail(Func input, int width, int height, float sigmaRange, int
   return poisson(detail, gradient_corrected, width, height, 200);
 }
 
+//input.compute_root(), model.compute_root()
 Func styleChange(Func model, Func input,
                  int modelW, int modelH, int inputW, int inputH,
                  float inputSigmaRange, int inputSigmaDomain, float modelSigmaRange, int modelSigmaDomain,
@@ -153,8 +175,8 @@ Func styleChange(Func model, Func input,
 
   Func amplifyRatio("amplifyRatio");
   amplifyRatio(x,y) = max(0, (textureMap(x,y) - baseTextureness(x,y))/detailTextureness(x,y));
-  Func output("before_postprocess");
-  output(x,y) = modifiedBase(x,y) + amplifyRatio(x,y) * detail(x, y);
+  Func before_postprocess("before_postprocess");
+  before_postprocess(x,y) = modifiedBase(x,y) + amplifyRatio(x,y) * detail(x, y);
 
   //detail match the quick pass
   // Func detailMatch = histMatch(abs(modelDetail), abs(detail), modelW, modelH, inputW, inputH, "detail_match", 0, 0.5, 1000);
@@ -167,5 +189,19 @@ Func styleChange(Func model, Func input,
   // Func output(name);
   // output(x,y) = modifiedDetail(x,y) + modifiedBase(x,y);
   // writeImage(output, "output.png", inputW, inputH);
-  return histMatch(model, output, modelW, modelH, inputW, inputH, name, 0, 1.1f, 256);
+  Func output = histMatch(model, before_postprocess, modelW, modelH, inputW, inputH, name, 0, 1.1f, 256);
+
+  /************* Schedule ****************/
+  schedule_compute_root(detail);//bilateral - before_postprocess, textureness
+  schedule_compute_root(base);//bilateral - histMatch 1
+  modelBase.compute_inline(); // bilateral - histMatch 0
+  schedule_compute_root(modifiedBase); // histMatch - before_postprocess, textureness
+  modelTextureness.compute_inline(); //textureness - histMatch 0
+  schedule_compute_root(inputTextureness); //bilateralGrid - histMatch 1
+  baseTextureness.compute_inline();
+  detailTextureness.compute_inline();
+  textureMap.compute_inline();
+  amplifyRatio.compute_inline();
+  schedule_compute_root(before_postprocess); //-histMatch 1
+  return output;
 }

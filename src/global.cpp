@@ -129,6 +129,9 @@ Func histogram(Func image, int width, int height, std::string name, float minVal
   hist(x) = 0.0f;
   RDom r(0, width, 0, height);
   hist(findBin(image(r.x,r.y), minVal, maxVal, nbins)) += w;
+
+  //Schedule
+  hist.compute_root().unroll(x);
   return hist;
 }
 
@@ -141,6 +144,9 @@ Func cumulate(Func hist, int nbins, std::string name)
   cumulative(x) = 0.0f;
   cumulative(0) = hist(0);
   cumulative(r) = cumulative(r-1) + hist(r);
+
+  //Schedule
+  cumulative.compute_root();
   return cumulative;
 }
 
